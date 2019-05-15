@@ -51,6 +51,18 @@ class Experimental_WP_Widget_Blocks_Manager {
 	}
 
 	/**
+	 * Returns the result of wp_get_sidebars_widgets without gutenberg_swap_out_sidebars_blocks_for_block_widgets filter being applied.
+	 *
+	 * @since 5.7.0
+	 */
+	private static function get_raw_sidebar_widgets() {
+		remove_filter( 'sidebars_widgets', 'gutenberg_swap_out_sidebars_blocks_for_block_widgets' );
+		$sidebars_widgets = wp_get_sidebars_widgets();
+		add_filter( 'sidebars_widgets', 'gutenberg_swap_out_sidebars_blocks_for_block_widgets' );
+		return $sidebars_widgets;
+	}
+
+	/**
 	 * Returns a post id being referenced in a sidebar area.
 	 *
 	 * @since 5.7.0
@@ -59,7 +71,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 	 * @return integer Post id.
 	 */
 	public static function get_post_id_referenced_in_sidebar( $sidebar_id ) {
-		$sidebars = wp_get_sidebars_widgets();
+		$sidebars = self::get_raw_sidebar_widgets();
 		$sidebar  = $sidebars[ $sidebar_id ];
 		return is_numeric( $sidebar ) ? $sidebar : 0;
 	}
@@ -73,7 +85,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 	 * @param integer $post_id    Post id.
 	 */
 	public static function reference_post_id_in_sidebar( $sidebar_id, $post_id ) {
-		$sidebars = wp_get_sidebars_widgets();
+		$sidebars = self::get_raw_sidebar_widgets();
 		$sidebar  = $sidebars[ $sidebar_id ];
 		wp_set_sidebars_widgets(
 			array_merge(
@@ -100,7 +112,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 	public static function get_sidebar_as_blocks( $sidebar_id ) {
 		$blocks = array();
 
-		$sidebars_items = wp_get_sidebars_widgets();
+		$sidebars_items = self::get_raw_sidebar_widgets();
 
 		foreach ( $sidebars_items[ $sidebar_id ] as $item ) {
 			$widget_class = self::get_widget_class( $item );
@@ -245,6 +257,9 @@ class Experimental_WP_Widget_Blocks_Manager {
 	 * @return string String representing the block.
 	 */
 	public static function serialize_block( $block ) {
+		if( ! isset( $block[ 'blockName' ] ) ) {
+			return '';
+		}
 		$name = $block['blockName'];
 		if ( 0 === strpos( $name, 'core/' ) ) {
 			$name = substr( $name, strlen( 'core/' ) );
