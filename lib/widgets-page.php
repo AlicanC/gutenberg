@@ -29,9 +29,14 @@ function gutenberg_widgets_init( $hook ) {
 			return;
 	}
 
+	$block_editor_settings = apply_filters( 'block_editor_settings', $editor_settings, $post );
+
 	wp_add_inline_script(
 		'wp-edit-widgets',
-		'wp.editWidgets.initialize( "widgets-editor" );'
+		sprintf(
+			'wp.editWidgets.initialize( "widgets-editor", %s );',
+			wp_json_encode( $block_editor_settings )
+		)
 	);
 	// Preload server-registered block schemas.
 	wp_add_inline_script(
