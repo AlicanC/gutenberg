@@ -11,10 +11,21 @@
  * @since 5.2.0
  */
 function the_gutenberg_widgets() {
+	/** This action is documented in wp-admin/admin-footer.php */
+	// phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
+	do_action( 'admin_print_styles-widgets.php' );
+	// phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
+	do_action( 'admin_print_scripts-widgets.php' );
 	?>
 	<div id="widgets-editor" class="blocks-widgets-container">
 	</div>
 	<?php
+	/** This action is documented in wp-admin/admin-footer.php */
+	// phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
+	do_action( 'admin_footer-widgets.php' );
+	/** This action is documented in wp-admin/admin-footer.php */
+	// phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
+	do_action( 'admin_print_footer_scripts-widgets.php' );
 }
 
 /**
