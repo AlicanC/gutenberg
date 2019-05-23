@@ -9,12 +9,8 @@ import {
 } from '@wordpress/block-editor';
 import { withDispatch, withSelect } from '@wordpress/data';
 
-/**
- * Internal dependencies
- */
-import WidgetBlockEditorSettings from '../widget-block-editor-settings';
-
 function WidgetArea( {
+	blockEditorSettings,
 	blocks,
 	initialOpen,
 	updateBlocks,
@@ -26,21 +22,14 @@ function WidgetArea( {
 				title={ widgetAreaName }
 				initialOpen={ initialOpen }
 			>
-				<WidgetBlockEditorSettings.Consumer>
-					{
-						( value ) => (
-							<BlockEditorProvider
-								value={ blocks }
-								onInput={ updateBlocks }
-								onChange={ updateBlocks }
-								settings={ value }
-							>
-								<BlockList />
-							</BlockEditorProvider>
-						)
-					}
-				</WidgetBlockEditorSettings.Consumer>
-
+				<BlockEditorProvider
+					value={ blocks }
+					onInput={ updateBlocks }
+					onChange={ updateBlocks }
+					settings={ blockEditorSettings }
+				>
+					<BlockList />
+				</BlockEditorProvider>
 			</PanelBody>
 		</Panel>
 	);
