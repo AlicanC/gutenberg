@@ -257,7 +257,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 	 * @return string String representing the block.
 	 */
 	public static function serialize_block( $block ) {
-		if( ! isset( $block[ 'blockName' ] ) ) {
+		if ( ! isset( $block['blockName'] ) ) {
 			return '';
 		}
 		$name = $block['blockName'];
