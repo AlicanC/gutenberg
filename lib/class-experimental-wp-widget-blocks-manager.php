@@ -13,6 +13,9 @@
  * @since 5.7.0
  */
 class Experimental_WP_Widget_Blocks_Manager {
+
+	private static $unfiltered_sidebar_widgets = null;
+
 	/**
 	 * Returns the $wp_registered_widgets global.
 	 *
@@ -56,10 +59,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 	 * @since 5.7.0
 	 */
 	private static function get_raw_sidebar_widgets() {
-		remove_filter( 'sidebars_widgets', 'gutenberg_swap_out_sidebars_blocks_for_block_widgets' );
-		$sidebars_widgets = wp_get_sidebars_widgets();
-		add_filter( 'sidebars_widgets', 'gutenberg_swap_out_sidebars_blocks_for_block_widgets' );
-		return $sidebars_widgets;
+		return self::$unfiltered_sidebar_widgets;
 	}
 
 	/**
@@ -112,7 +112,8 @@ class Experimental_WP_Widget_Blocks_Manager {
 	public static function get_sidebar_as_blocks( $sidebar_id ) {
 		$blocks = array();
 
-		$sidebars_items = self::get_raw_sidebar_widgets();
+		$sidebars_items         = self::get_raw_sidebar_widgets();
+		$wp_registered_sidebars = self::get_wp_registered_sidebars();
 
 		foreach ( $sidebars_items[ $sidebar_id ] as $item ) {
 			$widget_class = self::get_widget_class( $item );
@@ -121,7 +122,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 				'attrs'     => array(
 					'class'      => $widget_class,
 					'identifier' => $item,
-					'instance'   => self::get_sidebar_widget_instance( $sidebar, $item ),
+					'instance'   => self::get_sidebar_widget_instance( $wp_registered_sidebars[ $sidebar_id ], $item ),
 				),
 				'innerHTML' => '',
 			);
@@ -258,7 +259,7 @@ class Experimental_WP_Widget_Blocks_Manager {
 	 */
 	public static function serialize_block( $block ) {
 		if ( ! isset( $block['blockName'] ) ) {
-			return '';
+			return false;
 		}
 		$name = $block['blockName'];
 		if ( 0 === strpos( $name, 'core/' ) ) {
@@ -285,5 +286,92 @@ class Experimental_WP_Widget_Blocks_Manager {
 				$block['innerHTML']
 			);
 		}
+	}
+
+	/**
+	 * Outputs a block widget on the website frontend.
+	 *
+	 * @param array $options   Widget options.
+	 * @param array $arguments Arguments array.
+	 */
+	public static function gutenberg_output_blocks_widget( $options, $arguments ) {
+		echo $options['before_widget'];
+		foreach ( $arguments['blocks'] as $block ) {
+			echo render_block( $block );
+		}
+		echo $options['after_widget'];
+	}
+
+	/**
+	 * Registers of a widget that should represent a set of blocks and returns its id.
+	 *
+	 * @param array $blocks   Array of blocks.
+	 */
+	public static function gutenberg_blocks_to_widget( $blocks ) {
+		$widget_id = 'blocks-widget-' . md5( Experimental_WP_Widget_Blocks_Manager::serialize_block( $blocks ) );
+		global $wp_registered_widgets;
+		if ( isset( $wp_registered_widgets[ $widget_id ] ) ) {
+			return $widget_id;
+		}
+		wp_register_sidebar_widget(
+			$widget_id,
+			__( 'Blocks Area ', 'gutenberg' ),
+			'Experimental_WP_Widget_Blocks_Manager::gutenberg_output_blocks_widget',
+			array(
+				'classname'   => 'widget-area',
+				'description' => __( 'Displays a set of blocks', 'gutenberg' ),
+			),
+			array(
+				'blocks' => $blocks,
+			)
+		);
+		return $widget_id;
+	}
+
+	/**
+	 * Filters the $sidebars_widgets to exchange wp_area post id with a widget that renders that block area.
+	 */
+	public static function gutenberg_swap_out_sidebars_blocks_for_block_widgets( $sidebars_widgets_input ) {
+		global $sidebars_widgets;
+		if ( null === self::$unfiltered_sidebar_widgets ) {
+			self::$unfiltered_sidebar_widgets = $sidebars_widgets;
+		}
+		$filtered_sidebar_widgets = array();
+		foreach ( $sidebars_widgets_input as $sidebar_id => $item ) {
+			if ( ! is_numeric( $item ) ) {
+				$filtered_sidebar_widgets[ $sidebar_id ] = $item;
+				continue;
+			}
+
+			$filtered_widgets   = array();
+			$last_set_of_blocks = array();
+			$post               = get_post( $item );
+			$blocks             = parse_blocks( $post->post_content );
+
+			foreach ( $blocks as $block ) {
+				if ( ! isset( $block['blockName'] ) ) {
+					continue;
+				}
+				if (
+					'core/legacy-widget' === $block['blockName'] &&
+					isset( $block['attrs']['identifier'] )
+				) {
+					if ( ! empty( $last_set_of_blocks ) ) {
+						$filtered_widgets[] = self::gutenberg_blocks_to_widget( $last_set_of_blocks );
+						$last_set_of_blocks = array();
+					}
+					$filtered_widgets[] = $block['attrs']['identifier'];
+				} else {
+					$last_set_of_blocks[] = $block;
+				}
+			}
+			if ( ! empty( $last_set_of_blocks ) ) {
+				$filtered_widgets[] = self::gutenberg_blocks_to_widget( $last_set_of_blocks );
+			}
+
+			$filtered_sidebar_widgets[ $sidebar_id ] = $filtered_widgets;
+		}
+		$sidebars_widgets = $filtered_sidebar_widgets;
+		return $filtered_sidebar_widgets;
 	}
 }
